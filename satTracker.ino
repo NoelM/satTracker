@@ -29,7 +29,29 @@ struct Controller {
   bool polDirect;
 };
 
-struct Controller ctrlr = {90, 0, 0, false};
+struct Controller ctrlr = {90, 0, 0, true};
+
+static const unsigned char PROGMEM arrow_direct[] = {
+  B00111000,
+  B01101100,
+  B11000100,
+  B10011111,
+  B11001110,
+  B01100100,
+  B00110000,
+};
+
+static const unsigned char PROGMEM arrow_undirect[] = {
+  B00110000,
+  B01100100,
+  B11001110,
+  B10011111,
+  B11000100,
+  B01101100,
+  B00111000,
+};
+
+static const unsigned char* arrows[] = {arrow_undirect, arrow_direct};
 
 Servo azServo;
 Servo elServo;
@@ -52,7 +74,8 @@ void setup() {
   azServo.attach(6);
   elServo.attach(5);
 
-  attachInterrupt(0, changeMinAz, RISING);
+  attachInterrupt(0, changeMinAz, FALLING);
+  attachInterrupt(1, changePolDirect, FALLING);
 }
 
 
@@ -149,6 +172,11 @@ void printScreenPos() {
   display.setCursor(0, 0);
   display.println(buf);
 
+  display.drawBitmap(
+    71, // 12 chars * 6 pixels - 1
+    25, // 3 lines * 8 pixels - 1
+    arrows[ctrlr.polDirect], 8, 7, 1);
+
   display.display();
 }
 
@@ -176,6 +204,12 @@ void changeMinAz() {
   } else {
     ctrlr.minAz = 0;
   }
+  printScreenPos();
+  updateMountPosition();
+}
+
+void changePolDirect() {
+  ctrlr.polDirect = !ctrlr.polDirect;
   printScreenPos();
   updateMountPosition();
 }
