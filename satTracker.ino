@@ -24,13 +24,16 @@ struct Mount {
 
 struct Mount mount = {0, 0, 0, 0};
 
+struct Controller {
+  int azDeg, elDeg, pol;
+};
+
+struct Controller ctrlr = {90, 0, 0};
+
 Servo azServo;
 Servo elServo;
 
-inline float wrapAngle(int angle)
-{
-  return angle - 180. * floor( angle / 180. );
-}
+char polNames[] = "NESW";
 
 void setup() { 
   Serial.begin(19200);
@@ -49,6 +52,8 @@ void setup() {
 
   azServo.attach(6);
   elServo.attach(5);
+
+  attachInterrupt(0, changePolarity, RISING);
 }
 
 
@@ -76,18 +81,37 @@ void listenAndAct() {
     char upMode[3], dnMode[3];
     sscanf(buf, "AZ%d.%d EL%d.%d UP%d %s DN%d %s", &azDeg, &dec, &elDeg, &dec, &upFreq, upMode, &dnFreq, dnMode);
     printSerial(msg, azDeg, elDeg);
+        
+    ctrlr.azDeg = azDeg;
+    ctrlr.elDeg = elDeg;
 
-    updateMountPosition(azDeg, elDeg);
+    updateMountPosition();
   } 
 }
 
 
-void updateMountPosition(int azDeg, int elDeg) {
-  azDeg = wrapAngle(azDeg);
+int getAzPolarized() {
+  int azDeg;
+  switch(ctrlr.pol) {
+    case 0: // North 270 -> 90
+      azDeg = ctrlr.azDeg >= 270 ? ctrlr.azDeg - 270 : ctrlr.azDeg + 90; break;
+    case 1: // East 0 -> 180
+      azDeg = ctrlr.azDeg; break;
+    case 2: // South 90 -> 270
+      azDeg = ctrlr.azDeg - 90; break;
+    case 3: // West 180 -> 360
+      azDeg = ctrlr.azDeg - 180; break;
+  }
+  return min(max(azDeg,0),180);
+}
+
+
+void updateMountPosition() {
+  int azDeg = getAzPolarized();
   if (abs(azDeg - mount.azDeg) > MINMOVE) {
     moveAzToDeg(azDeg);
   }
-  elDeg = 90 - elDeg;
+  int elDeg = 90 - ctrlr.elDeg;
   if (abs(elDeg - mount.elDeg) > MINMOVE) {
     moveElToDeg(elDeg);
   }
@@ -115,33 +139,41 @@ void moveAzToDeg(int deg) {
 
 
 void printScreenPos() {
-  display.fillRect(0, 0, SCREEN_WIDTH, 20, SSD1306_BLACK);
+  display.fillRect(0, 0, SCREEN_WIDTH, 24, SSD1306_BLACK);
   display.display();
 
-  char buf[20];
-  sprintf(buf, "AZ %3ddeg  %4dus\n", mount.azDeg, mount.azUs);
+  char buf[60];
+  sprintf(buf, "AZ      EL      MIN\n%3ddeg  %3ddeg  %c\n%4dus  %4dus", mount.azDeg, mount.elDeg, polNames[ctrlr.pol], mount.azUs, mount.elUs); 
   display.setCursor(0, 0);
-  display.println(buf);
-
-  sprintf(buf, "EL %3ddeg  %4dus\n", mount.elDeg, mount.elUs);
-  display.setCursor(0, 10);
   display.println(buf);
 
   display.display();
 }
 
+
+
 void printSerial(String msg, int azDeg, int elDeg) {
-  display.fillRect(0, 25, SCREEN_WIDTH, 30, SSD1306_BLACK);
+  display.fillRect(0, 25, SCREEN_WIDTH, 40, SSD1306_BLACK);
   display.display();
 
+  char buf[40];
+  sprintf(buf, ">>> EASYCOMM MSG\n%d %d", azDeg, elDeg);
   display.setCursor(0, 25);
-  display.println(">>> EASYCOMM MSG");
-  display.setCursor(0, 35);
-  char buf[20];
-  sprintf(buf, "%d %d\n", azDeg, elDeg);
   display.println(buf);
+
   display.setCursor(0, 45);
   display.println(msg);
 
   display.display();
+}
+
+
+void changePolarity() {
+  if (ctrlr.pol < 3) {
+    ctrlr.pol += 1;
+  } else {
+    ctrlr.pol = 0;
+  }
+  printScreenPos();
+  updateMountPosition();
 }
