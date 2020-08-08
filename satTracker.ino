@@ -14,7 +14,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT,
                          &SPI, OLED_DC, OLED_RESET, OLED_CS);
 
 #define MINSERVO 544
-#define MAXSERVO 2350
+#define MAXSERVO 2300
 #define MINMOVE 5
 
 struct Mount {
@@ -133,13 +133,9 @@ int getAzPolarized() {
 
 void updateMountPosition() {
   int azDeg = 180 - getAzPolarized();
-  if (abs(azDeg - mount.azDeg) > MINMOVE) {
-    moveAzToDeg(azDeg);
-  }
+  moveAzToDeg(azDeg);
   int elDeg = 90 - ctrlr.elDeg;
-  if (abs(elDeg - mount.elDeg) > MINMOVE) {
-    moveElToDeg(elDeg);
-  }
+  moveElToDeg(elDeg);
   printScreenPos();
 }
 
@@ -150,16 +146,40 @@ int degToUs(int deg) {
 
 
 void moveElToDeg(int deg) {
+  int startUs = degToUs(mount.elDeg);
+  int stopUs = degToUs(deg);
+  if (stopUs - startUs > 0) {
+    for (int t = startUs; t <= stopUs; t +=10) {
+      elServo.writeMicroseconds(t);
+      delay(20);
+    }
+  } else {
+    for (int t = startUs; t >= stopUs; t -=10) {
+      elServo.writeMicroseconds(t);
+      delay(20);
+    }
+  }
   mount.elDeg = deg;
-  mount.elUs = degToUs(deg);
-  elServo.writeMicroseconds(mount.elUs);
+  mount.elUs = stopUs;
 }
 
 
 void moveAzToDeg(int deg) {
+  int startUs = degToUs(mount.azDeg);
+  int stopUs = degToUs(deg);
+  if (stopUs - startUs > 0) {
+    for (int t = startUs; t <= stopUs; t +=10) {
+      azServo.writeMicroseconds(t);
+      delay(20);
+    }
+  } else {
+    for (int t = startUs; t >= stopUs; t -=10) {
+      azServo.writeMicroseconds(t);
+      delay(20);
+    }
+  }
   mount.azDeg = deg;
-  mount.azUs = degToUs(deg);
-  azServo.writeMicroseconds(mount.azUs);
+  mount.azUs = stopUs;
 }
 
 
