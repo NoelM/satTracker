@@ -29,7 +29,7 @@ struct Controller {
   bool polDirect;
 };
 
-struct Controller ctrlr = {90, 0, 0, true};
+struct Controller ctrlr = {90, 0, 0, false};
 
 Servo azServo;
 Servo elServo;
@@ -91,22 +91,25 @@ void listenAndAct() {
 
 int getAzPolarized() {
   int azDeg;
-  /*switch(ctrlr.pol) {
-    case 0: // North 270 -> 90
-      azDeg = ctrlr.azDeg >= 270 ? ctrlr.azDeg - 270 : ctrlr.azDeg + 90; break;
-    case 1: // East 0 -> 180
-      azDeg = ctrlr.azDeg; break;
-    case 2: // South 90 -> 270
-      azDeg = ctrlr.azDeg - 90; break;
-    case 3: // West 180 -> 360
-      azDeg = ctrlr.azDeg - 180; break;
-  }*/
+  if (ctrlr.polDirect) { // pass in direct (0 -> 90)
+    if (ctrlr.minAz > 180 && ctrlr.azDeg < 180) {
+      azDeg = 360 - ctrlr.minAz + ctrlr.azDeg;
+    } else {
+      azDeg = ctrlr.azDeg - ctrlr.minAz;
+    }
+  } else { // pass in indirect (90 -> 0)
+    if (ctrlr.minAz < 180 && ctrlr.azDeg > 180) {
+      azDeg = ctrlr.azDeg - ctrlr.minAz - 180;
+    } else {
+      azDeg = 180 - (ctrlr.minAz - ctrlr.azDeg);
+    }
+  }
   return min(max(azDeg,0),180);
 }
 
 
 void updateMountPosition() {
-  int azDeg = getAzPolarized();
+  int azDeg = 180 - getAzPolarized();
   if (abs(azDeg - mount.azDeg) > MINMOVE) {
     moveAzToDeg(azDeg);
   }
