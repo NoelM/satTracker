@@ -25,15 +25,14 @@ struct Mount {
 struct Mount mount = {0, 0, 0, 0};
 
 struct Controller {
-  int azDeg, elDeg, pol;
+  int azDeg, elDeg, minAz;
+  bool polDirect;
 };
 
-struct Controller ctrlr = {90, 0, 0};
+struct Controller ctrlr = {90, 0, 0, true};
 
 Servo azServo;
 Servo elServo;
-
-char polNames[] = "NESW";
 
 void setup() { 
   Serial.begin(19200);
@@ -53,7 +52,7 @@ void setup() {
   azServo.attach(6);
   elServo.attach(5);
 
-  attachInterrupt(0, changePolarity, RISING);
+  attachInterrupt(0, changeMinAz, RISING);
 }
 
 
@@ -92,7 +91,7 @@ void listenAndAct() {
 
 int getAzPolarized() {
   int azDeg;
-  switch(ctrlr.pol) {
+  /*switch(ctrlr.pol) {
     case 0: // North 270 -> 90
       azDeg = ctrlr.azDeg >= 270 ? ctrlr.azDeg - 270 : ctrlr.azDeg + 90; break;
     case 1: // East 0 -> 180
@@ -101,7 +100,7 @@ int getAzPolarized() {
       azDeg = ctrlr.azDeg - 90; break;
     case 3: // West 180 -> 360
       azDeg = ctrlr.azDeg - 180; break;
-  }
+  }*/
   return min(max(azDeg,0),180);
 }
 
@@ -139,11 +138,11 @@ void moveAzToDeg(int deg) {
 
 
 void printScreenPos() {
-  display.fillRect(0, 0, SCREEN_WIDTH, 24, SSD1306_BLACK);
+  display.fillRect(0, 0, SCREEN_WIDTH, 32, SSD1306_BLACK);
   display.display();
 
-  char buf[60];
-  sprintf(buf, "AZ      EL      MIN\n%3ddeg  %3ddeg  %c\n%4dus  %4dus", mount.azDeg, mount.elDeg, polNames[ctrlr.pol], mount.azUs, mount.elUs); 
+  char buf[80];
+  sprintf(buf, ">>> MOUNT\nAZ  %3ddeg  %4dus\nEL  %3ddeg  %4dus\nMIN %3ddeg", mount.azDeg, mount.azUs, mount.elDeg, mount.elUs, ctrlr.minAz);
   display.setCursor(0, 0);
   display.println(buf);
 
@@ -153,12 +152,12 @@ void printScreenPos() {
 
 
 void printSerial(String msg, int azDeg, int elDeg) {
-  display.fillRect(0, 25, SCREEN_WIDTH, 40, SSD1306_BLACK);
+  display.fillRect(0, 36, SCREEN_WIDTH, 28, SSD1306_BLACK);
   display.display();
 
-  char buf[40];
-  sprintf(buf, ">>> EASYCOMM MSG\n%d %d", azDeg, elDeg);
-  display.setCursor(0, 25);
+  char buf[20];
+  sprintf(buf, ">>> EASYCOMM %d %d", azDeg, elDeg);
+  display.setCursor(0, 36);
   display.println(buf);
 
   display.setCursor(0, 45);
@@ -168,11 +167,11 @@ void printSerial(String msg, int azDeg, int elDeg) {
 }
 
 
-void changePolarity() {
-  if (ctrlr.pol < 3) {
-    ctrlr.pol += 1;
+void changeMinAz() {
+  if (ctrlr.minAz < 350) {
+    ctrlr.minAz += 10;
   } else {
-    ctrlr.pol = 0;
+    ctrlr.minAz = 0;
   }
   printScreenPos();
   updateMountPosition();
