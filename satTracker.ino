@@ -91,21 +91,31 @@ void listenAndAct() {
     char buf[40];
     msg.toCharArray(buf, 40);
 
-    /* 
-      https://github.com/Hamlib/Hamlib/blob/master/rotators/easycomm/easycomm.txt
+    if (msg.startsWith("POL")) {
+      int minAz;
+      bool polDirect;
+      sscanf(buf, "POL%d MIN%d", &polDirect, &minAz);
+      ctrlr.polDirect = polDirect;
+      ctrlr.minAz = minAz;
+    }
 
-      EASYCOMM I Standard
-      -------------------
-      AZaaa.a ELeee.e UPuuuuuuuuu UUU DNddddddddd DDD
-    */
-    int upFreq, dnFreq;
-    int azDeg, elDeg, dec;
-    char upMode[3], dnMode[3];
-    sscanf(buf, "AZ%d.%d EL%d.%d UP%d %s DN%d %s", &azDeg, &dec, &elDeg, &dec, &upFreq, upMode, &dnFreq, dnMode);
-    printSerial(msg, azDeg, elDeg);
-        
-    ctrlr.azDeg = azDeg;
-    ctrlr.elDeg = elDeg;
+    if (msg.startsWith("AZ")) {
+      /* 
+        https://github.com/Hamlib/Hamlib/blob/master/rotators/easycomm/easycomm.txt
+  
+        EASYCOMM I Standard
+        -------------------
+        AZaaa.a ELeee.e UPuuuuuuuuu UUU DNddddddddd DDD
+      */
+      int upFreq, dnFreq;
+      int azDeg, elDeg, dec;
+      char upMode[3], dnMode[3];
+      sscanf(buf, "AZ%d.%d EL%d.%d UP%d %s DN%d %s", &azDeg, &dec, &elDeg, &dec, &upFreq, upMode, &dnFreq, dnMode);
+      printSerial(msg, azDeg, elDeg);
+          
+      ctrlr.azDeg = azDeg;
+      ctrlr.elDeg = elDeg;
+    }
 
     updateMountPosition();
   } 
